@@ -373,16 +373,6 @@ h1 {
 	font-weight: 700;
 }
 
-.popup-title span:empty,
-.popup-title {
-	font-size: 0;
-}
-
-.popup-title::before {
-	content: "席の操作";
-	font-size: 20px;
-}
-
 .popup-close {
 	width: 36px;
 	height: 36px;
@@ -436,13 +426,30 @@ h1 {
 }
 
 #popup:has(#reserve-button:focus) #reserve-panel {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-areas:
+		"form"
+		"title"
+		"list"
+		"back";
+	gap: 14px;
+}
+
+#reserve-panel {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-areas:
+		"form"
+		"title"
+		"list"
+		"back";
 	gap: 14px;
 }
 
 .reserve-form {
 	display: grid;
+	grid-area: form;
 	grid-template-columns: minmax(0, 1fr) auto;
 	gap: 10px;
 }
@@ -466,6 +473,7 @@ h1 {
 }
 
 .reservation-list-title {
+	grid-area: title;
 	margin: 2px 0 0;
 	color: #354238;
 	font-size: 16px;
@@ -474,7 +482,9 @@ h1 {
 
 .reservation-list {
 	display: grid;
+	grid-area: list;
 	gap: 8px;
+	min-width: 0;
 	margin: 0;
 	padding-left: 24px;
 }
@@ -494,6 +504,7 @@ h1 {
 }
 
 .back-button {
+	grid-area: back;
 	align-self: flex-start;
 	min-height: 38px;
 	background: #edf1eb;
@@ -501,6 +512,82 @@ h1 {
 
 .popup-message:empty {
 	display: none;
+}
+
+@media (min-width: 560px) {
+	#reserve-panel,
+	#popup:has(#reserve-button:focus) #reserve-panel {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-areas:
+			"form title"
+			"form list"
+			"back back";
+		column-gap: 20px;
+		row-gap: 12px;
+		align-items: start;
+	}
+}
+
+.completion-toast {
+	position: fixed;
+	z-index: 20;
+	top: max(16px, env(safe-area-inset-top));
+	left: 50%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: max-content;
+	max-width: calc(100vw - 32px);
+	padding: 12px 18px;
+	transform: translateX(-50%);
+	border: 1px solid #c9dec5;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 8px 26px rgba(23, 34, 25, 0.18);
+	color: #263b2a;
+	font-size: 14px;
+	font-weight: 650;
+	animation: completion-toast-enter 180ms ease-out both;
+}
+
+.completion-toast::before {
+	display: grid;
+	width: 24px;
+	height: 24px;
+	flex: 0 0 24px;
+	place-items: center;
+	border-radius: 50%;
+	background: #d8ead4;
+	content: "";
+}
+
+.completion-toast::after {
+	position: absolute;
+	left: 27px;
+	width: 6px;
+	height: 11px;
+	transform: rotate(45deg);
+	border: solid #35663c;
+	border-width: 0 2px 2px 0;
+	content: "";
+}
+
+@keyframes completion-toast-enter {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.completion-toast {
+		animation: none;
+	}
 }
 
 @media (min-width: 700px) {
