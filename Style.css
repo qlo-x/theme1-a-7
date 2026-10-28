@@ -736,3 +736,194 @@ h1 {
 		min-height: 38px;
 	}
 }
+
+/* ===== スマホ（表示のみ） =====
+   JS が User Agent でスマホと判定すると、<html> に is-mobile が付く。
+   ヘッダーの下に要約、その下に席番号とタイムラインを並べる（L字の座席は出さない）。 */
+
+/* PC では要約と共通の目盛りを出さない */
+.summary,
+.timeline-axis {
+	display: none;
+}
+
+.is-mobile .seat-column,
+.is-mobile .seat-row {
+	display: none;
+}
+
+/* 時計：「現在時刻」を上、時刻を下の2行にする（文字の大きさは 1:2） */
+.is-mobile .clock {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-self: end;
+	line-height: 1.1;
+}
+
+.is-mobile .clock-label {
+	color: #566156;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.is-mobile #time {
+	font-size: 24px;
+}
+
+/* 要約 */
+.is-mobile .summary {
+	display: block;
+	padding: 20px 20px 16px;
+}
+
+.is-mobile .summary-status {
+	margin: 0;
+	font-size: 34px;
+	font-weight: 800;
+	line-height: 1.15;
+	letter-spacing: 0.02em;
+}
+
+.is-mobile .summary[data-state="free"] .summary-status {
+	color: var(--free);
+}
+
+.is-mobile .summary[data-state="full"] .summary-status {
+	color: var(--in-use);
+}
+
+.is-mobile .summary[data-state="closed"] .summary-status {
+	color: #6b746b;
+}
+
+.is-mobile .summary-detail {
+	margin: 4px 0 0;
+	color: var(--ink);
+	font-size: 17px;
+	font-weight: 650;
+	font-variant-numeric: tabular-nums;
+}
+
+.is-mobile .summary-detail:empty {
+	display: none;
+}
+
+/* 数字と時刻を大きく、まわりの文字（「空き」「席」「最短」など）を小さくする */
+.is-mobile .summary-emphasis {
+	margin: 0 0.12em;
+	font-variant-numeric: tabular-nums;
+}
+
+.is-mobile .summary-detail .summary-emphasis {
+	font-size: 30px;
+	font-weight: 800;
+}
+
+/* 席番号とタイムライン：1席1行、9〜21時を1本のバーで */
+.is-mobile #seat-map {
+	display: block;
+	padding: 0 16px 16px;
+	overflow-y: auto;
+}
+
+.is-mobile .seat-right {
+	display: block;
+}
+
+.is-mobile #timeline-area {
+	gap: 0;
+	overflow: visible;
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.is-mobile .timeline-axis {
+	position: sticky;
+	z-index: 2;
+	top: 0;
+	display: flex;
+	justify-content: space-between;
+	/* 背景は画面の端まで伸ばし、文字の並ぶ範囲はバーと同じ幅のままにする */
+	margin: 0 -16px;
+	padding: 6px 16px 6px 50px;
+	background: #f1f4ee;
+	color: #6b746b;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* 幅0の箱の中央に文字を置き、目盛りの位置とぴったり合わせる */
+.is-mobile .timeline-axis span {
+	display: flex;
+	justify-content: center;
+	width: 0;
+	white-space: nowrap;
+}
+
+/* 両端の時刻は、バーの外にはみ出さないよう内側に寄せる */
+.is-mobile .timeline-axis span:nth-child(2) {
+	justify-content: flex-start;
+}
+
+.is-mobile .timeline-axis span:last-child {
+	justify-content: flex-end;
+}
+
+/* 左上の「席」：席番号の列の上に置き、縦が席番号だと分かるようにする */
+.is-mobile .timeline-axis .timeline-axis-corner {
+	position: absolute;
+	left: 16px;
+	justify-content: flex-end;
+	width: 24px;
+	font-weight: 700;
+}
+
+.is-mobile .timeline {
+	gap: 10px;
+	flex: none;
+	padding: 5px 0;
+	border-bottom: 0;
+}
+
+.is-mobile .timeline-number {
+	display: block;
+	width: 24px;
+	height: auto;
+	flex: 0 0 24px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	font-size: 15px;
+	text-align: right;
+}
+
+.is-mobile .timeline-bars {
+	display: flex;
+	gap: 0;
+}
+
+.is-mobile .bar {
+	display: block;
+	flex: 1 1 0;
+}
+
+.is-mobile .bar-labels {
+	display: none;
+}
+
+.is-mobile .bar-track {
+	height: 22px;
+}
+
+.is-mobile .bar:first-child .bar-track {
+	border-right: 0;
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.is-mobile .bar:nth-child(2) .bar-track {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}

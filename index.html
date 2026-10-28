@@ -21,6 +21,12 @@
     </div>
   </header>
 
+  <!-- ===== 要約（スマホのみ）：今空いているか、満席ならいつ空くか ===== -->
+  <section class="summary" id="summary">
+    <p class="summary-status" id="summary-status"></p>
+    <p class="summary-detail" id="summary-detail"></p>
+  </section>
+
   <!-- ===== 座席とタイムライン ===== -->
   <main id="seat-map">
 
@@ -54,6 +60,16 @@
 
       <!-- タイムライン：1席につきバー2本（09〜15時 / 15〜21時） -->
       <section id="timeline-area">
+
+        <!-- 時刻の目盛り（スマホのみ）：全席で共通 -->
+        <div class="timeline-axis" aria-hidden="true">
+          <span class="timeline-axis-corner">席</span>
+          <span>9:00</span>
+          <span>12:00</span>
+          <span>15:00</span>
+          <span>18:00</span>
+          <span>21:00</span>
+        </div>
 
         <!-- 1番席 -->
         <div class="timeline" id="timeline1">
