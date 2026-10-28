@@ -356,9 +356,6 @@ function registerReservation(event) {
 }
 
 function setupPopup() {
-  const isMobile = /iPhone|iPad|Android/.test(navigator.userAgent);
-  if (isMobile) return;
-
   for (let seatId = 1; seatId <= 17; seatId += 1) {
     const seatEl = document.getElementById(`seat${seatId}`);
     if (seatEl) seatEl.addEventListener('click', () => openPopup(seatId));
