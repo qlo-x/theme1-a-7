@@ -58,6 +58,7 @@ function loadSeatSchedules() {
 
 const seatSchedules = loadSeatSchedules();
 let selectedSeatId = null;
+let completionTimeoutId = null;
 
 function saveSeatSchedules() {
   try {
@@ -178,6 +179,19 @@ function showMessage(message) {
   if (messageEl) messageEl.textContent = message;
 }
 
+function showCompletion(message) {
+  const toast = document.getElementById('completion-toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(completionTimeoutId);
+  completionTimeoutId = window.setTimeout(() => {
+    toast.hidden = true;
+    completionTimeoutId = null;
+  }, 3000);
+}
+
 function updateQuickActions(nowMinutes = getCurrentMinutes()) {
   const schedule = getSchedule(selectedSeatId);
   if (!schedule) return;
@@ -247,7 +261,7 @@ function renderReservations() {
         const saved = saveSeatSchedules();
         updateEverything();
         renderReservations();
-        if (saved) showMessage('予約をキャンセルしました。');
+        if (saved) showCompletion('予約をキャンセルしました。');
       });
 
       item.append(time, cancelButton);
@@ -280,7 +294,10 @@ function registerUseNow() {
   schedule.intervals.push({ state: 'in-use', start, end });
   const saved = saveSeatSchedules();
   updateEverything();
-  if (saved) showMessage('');
+  if (saved) {
+    showMessage('');
+    showCompletion('利用を開始しました。');
+  }
 }
 
 function returnSeat() {
@@ -297,7 +314,10 @@ function returnSeat() {
   }
   const saved = saveSeatSchedules();
   updateEverything();
-  if (saved) showMessage('');
+  if (saved) {
+    showMessage('');
+    showCompletion('返却しました。');
+  }
 }
 
 function extendUse() {
@@ -321,7 +341,10 @@ function extendUse() {
   activeInterval.end = end;
   const saved = saveSeatSchedules();
   updateEverything();
-  if (saved) showMessage('');
+  if (saved) {
+    showMessage('');
+    showCompletion('利用時間を延長しました。');
+  }
 }
 
 function parseTime(value) {
@@ -352,7 +375,10 @@ function registerReservation(event) {
   const saved = saveSeatSchedules();
   updateEverything();
   renderReservations();
-  if (saved) showMessage('');
+  if (saved) {
+    showMessage('');
+    showCompletion('予約を登録しました。');
+  }
 }
 
 function setupPopup() {
