@@ -327,6 +327,182 @@ h1 {
 	}
 }
 
+/* ===== 登録用ポップアップ（スマホ・PC 共通） ===== */
+.popup {
+	position: fixed;
+	z-index: 10;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+	padding: 24px;
+	background: rgba(24, 31, 25, 0.34);
+}
+
+.popup::before {
+	position: absolute;
+	width: min(520px, calc(100vw - 40px));
+	height: min(480px, calc(100dvh - 40px));
+	border: 1px solid #d7ddd4;
+	border-radius: 10px;
+	background: #fff;
+	box-shadow: 0 18px 55px rgba(23, 34, 25, 0.24);
+	content: "";
+}
+
+.popup > * {
+	position: relative;
+	z-index: 1;
+	width: min(460px, calc(100vw - 64px));
+}
+
+.popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #e1e6df;
+}
+
+.popup-title {
+	margin: 0;
+	color: #29372c;
+	font-size: 20px;
+	font-weight: 700;
+}
+
+.popup-title span:empty,
+.popup-title {
+	font-size: 0;
+}
+
+.popup-title::before {
+	content: "席の操作";
+	font-size: 20px;
+}
+
+.popup-close {
+	width: 36px;
+	height: 36px;
+	border: 0;
+	border-radius: 50%;
+	background: #edf1eb;
+	color: #334235;
+	font-size: 23px;
+	cursor: pointer;
+}
+
+.popup-panel {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.action-button,
+.back-button,
+.cancel-button {
+	min-height: 44px;
+	padding: 9px 14px;
+	border: 1px solid rgba(35, 48, 36, 0.16);
+	border-radius: 6px;
+	color: #263229;
+	font: inherit;
+	font-weight: 650;
+	cursor: pointer;
+}
+
+.use-now,
+.cancel-button {
+	background: #f2cbc7;
+}
+
+.return,
+.register {
+	background: #d8ead4;
+}
+
+.extend {
+	background: #f2ddc6;
+}
+
+.reserve {
+	background: #f5e9b9;
+}
+
+#popup:has(#reserve-button:focus) #quick-panel {
+	display: none;
+}
+
+#popup:has(#reserve-button:focus) #reserve-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.reserve-form {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 10px;
+}
+
+.reserve-label {
+	grid-column: 1 / -1;
+	color: #354238;
+	font-size: 15px;
+	font-weight: 650;
+}
+
+.reserve-input {
+	min-width: 0;
+	min-height: 44px;
+	padding: 8px 10px;
+	border: 1px solid #c6d0c3;
+	border-radius: 5px;
+	background: #fff;
+	color: #263229;
+	font: inherit;
+}
+
+.reservation-list-title {
+	margin: 2px 0 0;
+	color: #354238;
+	font-size: 16px;
+	text-align: center;
+}
+
+.reservation-list {
+	display: grid;
+	gap: 8px;
+	margin: 0;
+	padding-left: 24px;
+}
+
+.reservation-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	color: #354238;
+}
+
+.cancel-button {
+	min-height: 34px;
+	background: #f2cbc7;
+	font-size: 13px;
+}
+
+.back-button {
+	align-self: flex-start;
+	min-height: 38px;
+	background: #edf1eb;
+}
+
+.popup-message:empty {
+	display: none;
+}
+
 @media (min-width: 700px) {
 	header {
 		grid-template-columns: minmax(180px, 1fr) auto minmax(220px, 1fr);
@@ -447,185 +623,15 @@ h1 {
 		line-height: 12px;
 	}
 
+	/* PC では、座席やポップアップにマウスが乗っている間だけ表示する */
+	.popup {
+		display: none;
+	}
+
 	body:has(.seat:hover) #popup,
 	body:has(#popup:hover) #popup,
 	body:has(#popup :focus) #popup {
 		display: flex;
-	}
-
-	.popup {
-		position: fixed;
-		z-index: 10;
-		inset: 0;
-		display: none;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		padding: 24px;
-		background: rgba(24, 31, 25, 0.34);
-	}
-
-	.popup::before {
-		position: absolute;
-		width: min(520px, calc(100vw - 40px));
-		height: min(480px, calc(100dvh - 40px));
-		border: 1px solid #d7ddd4;
-		border-radius: 10px;
-		background: #fff;
-		box-shadow: 0 18px 55px rgba(23, 34, 25, 0.24);
-		content: "";
-	}
-
-	.popup > * {
-		position: relative;
-		z-index: 1;
-		width: min(460px, calc(100vw - 64px));
-	}
-
-	.popup-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding-bottom: 10px;
-		border-bottom: 1px solid #e1e6df;
-	}
-
-	.popup-title {
-		margin: 0;
-		color: #29372c;
-		font-size: 20px;
-		font-weight: 700;
-	}
-
-	.popup-title span:empty,
-	.popup-title {
-		font-size: 0;
-	}
-
-	.popup-title::before {
-		content: "席の操作";
-		font-size: 20px;
-	}
-
-	.popup-close {
-		width: 36px;
-		height: 36px;
-		border: 0;
-		border-radius: 50%;
-		background: #edf1eb;
-		color: #334235;
-		font-size: 23px;
-		cursor: pointer;
-	}
-
-	.popup-panel {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 10px;
-	}
-
-	.action-button,
-	.back-button,
-	.cancel-button {
-		min-height: 44px;
-		padding: 9px 14px;
-		border: 1px solid rgba(35, 48, 36, 0.16);
-		border-radius: 6px;
-		color: #263229;
-		font: inherit;
-		font-weight: 650;
-		cursor: pointer;
-	}
-
-	.use-now,
-	.cancel-button {
-		background: #f2cbc7;
-	}
-
-	.return,
-	.register {
-		background: #d8ead4;
-	}
-
-	.extend {
-		background: #f2ddc6;
-	}
-
-	.reserve {
-		background: #f5e9b9;
-	}
-
-	#popup:has(#reserve-button:focus) #quick-panel {
-		display: none;
-	}
-
-	#popup:has(#reserve-button:focus) #reserve-panel {
-		display: flex;
-		flex-direction: column;
-		gap: 14px;
-	}
-
-	.reserve-form {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: 10px;
-	}
-
-	.reserve-label {
-		grid-column: 1 / -1;
-		color: #354238;
-		font-size: 15px;
-		font-weight: 650;
-	}
-
-	.reserve-input {
-		min-width: 0;
-		min-height: 44px;
-		padding: 8px 10px;
-		border: 1px solid #c6d0c3;
-		border-radius: 5px;
-		background: #fff;
-		color: #263229;
-		font: inherit;
-	}
-
-	.reservation-list-title {
-		margin: 2px 0 0;
-		color: #354238;
-		font-size: 16px;
-		text-align: center;
-	}
-
-	.reservation-list {
-		display: grid;
-		gap: 8px;
-		margin: 0;
-		padding-left: 24px;
-	}
-
-	.reservation-item {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		color: #354238;
-	}
-
-	.cancel-button {
-		min-height: 34px;
-		background: #f2cbc7;
-		font-size: 13px;
-	}
-
-	.back-button {
-		align-self: flex-start;
-		min-height: 38px;
-		background: #edf1eb;
-	}
-
-	.popup-message:empty {
-		display: none;
 	}
 }
 
