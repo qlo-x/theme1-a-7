@@ -3,6 +3,19 @@ const OPEN_MINUTES = 9 * 60;
 const CLOSE_MINUTES = 21 * 60;
 const STORAGE_KEY = 'lc-seat-checker-schedules';
 
+// スマホは表示のみ。CSS がスマホ用の見た目に切り替えられるよう、<html> に印を付ける
+const isMobile = /iPhone|iPad|Android/.test(navigator.userAgent);
+if (isMobile) document.documentElement.classList.add('is-mobile');
+
+// テスト用：URL の末尾で表示を切り替える（例：index.html?check=full&time=15:00）
+//   check=full … 満席にする / check=free … 空席がある初期データにする
+//   time=HH:MM … 現在時刻をその時刻として扱う（2桁で書く。例：09:00）
+// どれかが付いているときは確認用の表示なので、登録しても localStorage に保存しない
+const urlParams = new URLSearchParams(location.search);
+const checkMode = urlParams.get('check');
+const checkTime = urlParams.get('time');
+const isCheckMode = checkMode === 'full' || checkMode === 'free' || checkTime !== null;
+
 const initialSeatSchedules = [
   { id: 1, intervals: [{ state: 'reserved', start: 9 * 60, end: 11 * 60 }] },
   { id: 2, intervals: [{ state: 'in-use', start: 9 * 60, end: 11 * 60 }] },
@@ -43,6 +56,9 @@ function isValidSchedule(data) {
 }
 
 function loadSeatSchedules() {
+  // 満席・空席の確認では、保存されたデータではなく初期データから始める
+  if (checkMode === 'full' || checkMode === 'free') return initialSeatSchedules;
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return initialSeatSchedules;
@@ -61,6 +77,9 @@ let selectedSeatId = null;
 let completionTimeoutId = null;
 
 function saveSeatSchedules() {
+  // 確認用の表示では、本物のデータを上書きしないよう保存しない
+  if (isCheckMode) return true;
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seatSchedules));
     return true;
@@ -74,7 +93,14 @@ function saveSeatSchedules() {
 function getNowInJapan() {
   const now = new Date();
   const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utcTime + 9 * 60 * 60 * 1000);
+  const japanNow = new Date(utcTime + 9 * 60 * 60 * 1000);
+
+  // URL で time が指定されていれば、その時刻として扱う
+  const checkMinutes = checkTime === null ? null : parseTime(checkTime);
+  if (checkMinutes !== null) {
+    japanNow.setHours(Math.floor(checkMinutes / 60), checkMinutes % 60, 0, 0);
+  }
+  return japanNow;
 }
 
 function formatTime(date) {
@@ -165,10 +191,76 @@ function updateTimelines(nowMinutes) {
   }
 }
 
+// その席が次に空く時刻（分）を返す。今日はもう空かないなら null
+function getNextFreeMinutes(seat, nowMinutes) {
+  let time = nowMinutes;
+  let covering = seat.intervals.find((interval) => interval.start <= time && time < interval.end);
+  while (covering) {
+    time = covering.end;
+    covering = seat.intervals.find((interval) => interval.start <= time && time < interval.end);
+  }
+  return time < CLOSE_MINUTES ? time : null;
+}
+
+// 要約の1行を「前の文字・強調する文字・後ろの文字」で書き込む（強調は数字や時刻に使う）
+function setSummaryLine(el, before, emphasis = '', after = '') {
+  el.replaceChildren();
+  if (before) el.append(before);
+  if (emphasis) {
+    const emphasisEl = document.createElement('span');
+    emphasisEl.className = 'summary-emphasis';
+    emphasisEl.textContent = emphasis;
+    el.append(emphasisEl);
+  }
+  if (after) el.append(after);
+}
+
+function updateSummary(nowMinutes) {
+  const summaryEl = document.getElementById('summary');
+  const statusEl = document.getElementById('summary-status');
+  const detailEl = document.getElementById('summary-detail');
+  if (!summaryEl || !statusEl || !detailEl) return;
+
+  setSummaryLine(detailEl, '');
+
+  if (nowMinutes < OPEN_MINUTES) {
+    summaryEl.dataset.state = 'closed';
+    setSummaryLine(statusEl, '開館前');
+    setSummaryLine(detailEl, '', formatMinutes(OPEN_MINUTES), 'から');
+    return;
+  }
+
+  if (nowMinutes >= CLOSE_MINUTES) {
+    summaryEl.dataset.state = 'closed';
+    setSummaryLine(statusEl, '閉館');
+    return;
+  }
+
+  const freeCount = seatSchedules.filter((seat) => !getActiveInterval(seat, nowMinutes)).length;
+  if (freeCount > 0) {
+    summaryEl.dataset.state = 'free';
+    setSummaryLine(statusEl, '空席');
+    setSummaryLine(detailEl, '残り', String(freeCount), '席');
+    return;
+  }
+
+  summaryEl.dataset.state = 'full';
+  setSummaryLine(statusEl, '満席');
+  const nextFreeTimes = seatSchedules
+    .map((seat) => getNextFreeMinutes(seat, nowMinutes))
+    .filter((time) => time !== null);
+  if (nextFreeTimes.length > 0) {
+    setSummaryLine(detailEl, '最短', formatMinutes(Math.min(...nextFreeTimes)), 'から空き');
+  } else {
+    setSummaryLine(detailEl, '本日の空きなし');
+  }
+}
+
 function updateEverything() {
   const now = getNowInJapan();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   setCurrentTime(now);
+  updateSummary(nowMinutes);
   updateSeatStates(nowMinutes);
   updateTimelines(nowMinutes);
   updateQuickActions(nowMinutes);
@@ -382,6 +474,9 @@ function registerReservation(event) {
 }
 
 function setupPopup() {
+  // スマホは表示のみなので、座席を押しても何も開かない
+  if (isMobile) return;
+
   for (let seatId = 1; seatId <= 17; seatId += 1) {
     const seatEl = document.getElementById(`seat${seatId}`);
     if (seatEl) seatEl.addEventListener('click', () => openPopup(seatId));
@@ -408,6 +503,16 @@ function setupPopup() {
   document.getElementById('reserve-form').addEventListener('submit', registerReservation);
 }
 
+// 満席の確認用（?check=full）：全席を「開館から、今の1時間後〜約3時間後まで使用中」にする
+function fillAllSeatsForCheck() {
+  const nowMinutes = getCurrentMinutes();
+  seatSchedules.forEach((seat, index) => {
+    const end = Math.min(nowMinutes + 60 + index * 10, CLOSE_MINUTES);
+    seat.intervals = [{ state: 'in-use', start: OPEN_MINUTES, end }];
+  });
+}
+
 setupPopup();
+if (checkMode === 'full') fillAllSeatsForCheck();
 updateEverything();
 setInterval(updateEverything, 60 * 1000);
