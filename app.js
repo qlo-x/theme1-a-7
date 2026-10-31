@@ -1,6 +1,9 @@
-const BAR_TOTAL_MINUTES = 360;
+// ===== 設定 =====
+const SEAT_COUNT = 17;
 const OPEN_MINUTES = 9 * 60;
 const CLOSE_MINUTES = 21 * 60;
+const BAR_TOTAL_MINUTES = 6 * 60; // タイムラインのバー1本で表す時間（09〜15時 / 15〜21時）
+const USE_MINUTES = 2 * 60; // 利用・予約・延長は、どれも1回2時間
 const STORAGE_KEY = 'lc-seat-checker-schedules';
 
 // スマホは表示のみ。CSS がスマホ用の見た目に切り替えられるよう、<html> に印を付ける
@@ -16,6 +19,8 @@ const checkMode = urlParams.get('check');
 const checkTime = urlParams.get('time');
 const isCheckMode = checkMode === 'full' || checkMode === 'free' || checkTime !== null;
 
+// ===== 座席データ =====
+// 1席ごとに、予約・利用の時間帯（開館日の 0:00 からの分）を持つ
 const initialSeatSchedules = [
   { id: 1, intervals: [{ state: 'reserved', start: 9 * 60, end: 11 * 60 }] },
   { id: 2, intervals: [{ state: 'in-use', start: 9 * 60, end: 11 * 60 }] },
@@ -38,7 +43,7 @@ const initialSeatSchedules = [
 
 function isValidSchedule(data) {
   return Array.isArray(data)
-    && data.length === 17
+    && data.length === SEAT_COUNT
     && data.every((seat, index) => (
       seat
       && seat.id === index + 1
@@ -90,29 +95,35 @@ function saveSeatSchedules() {
   }
 }
 
-function getNowInJapan() {
-  const now = new Date();
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const japanNow = new Date(utcTime + 9 * 60 * 60 * 1000);
-
-  // URL で time が指定されていれば、その時刻として扱う
-  const checkMinutes = checkTime === null ? null : parseTime(checkTime);
-  if (checkMinutes !== null) {
-    japanNow.setHours(Math.floor(checkMinutes / 60), checkMinutes % 60, 0, 0);
-  }
-  return japanNow;
-}
-
-function formatTime(date) {
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
-  return `${hour}:${minute}`;
-}
-
 function getSchedule(seatId) {
   return seatSchedules.find((seat) => seat.id === seatId);
 }
 
+// ===== 時刻 =====
+function parseTime(value) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+function formatMinutes(minutes) {
+  const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
+  const minute = String(minutes % 60).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
+// 日本時間の今を、0:00 からの分で返す（URL で time が指定されていれば、その時刻）
+function getCurrentMinutes() {
+  const checkMinutes = checkTime === null ? null : parseTime(checkTime);
+  if (checkMinutes !== null) return checkMinutes;
+
+  const now = new Date();
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const japanNow = new Date(utcTime + 9 * 60 * 60 * 1000);
+  return japanNow.getHours() * 60 + japanNow.getMinutes();
+}
+
+// ===== 座席の状態 =====
+// 予約は、開始時刻になったら使用中として扱う
 function getEffectiveState(interval, nowMinutes) {
   if (interval.state === 'reserved' && nowMinutes >= interval.start) return 'in-use';
   return interval.state;
@@ -126,71 +137,6 @@ function getActiveInterval(seat, nowMinutes) {
   ));
 }
 
-function setCurrentTime(now) {
-  const timeEl = document.getElementById('time');
-  if (timeEl) timeEl.textContent = formatTime(now);
-}
-
-function updateSeatStates(nowMinutes) {
-  for (let seatId = 1; seatId <= 17; seatId += 1) {
-    const seatEl = document.getElementById(`seat${seatId}`);
-    if (!seatEl) continue;
-
-    seatEl.classList.remove('free', 'reserved', 'in-use');
-    const schedule = getSchedule(seatId);
-    const isInUse = schedule && getActiveInterval(schedule, nowMinutes);
-    seatEl.classList.add(isInUse ? 'in-use' : 'free');
-  }
-}
-
-function clearSegments(barTrack) {
-  barTrack.querySelectorAll('.segment').forEach((segment) => segment.remove());
-}
-
-function addSegment(barTrack, leftPercent, widthPercent, className) {
-  const segment = document.createElement('div');
-  segment.className = `segment ${className}`;
-  segment.style.left = `${leftPercent}%`;
-  segment.style.width = `${widthPercent}%`;
-  barTrack.appendChild(segment);
-}
-
-function updateTimelineBar(seatId, bar, nowMinutes) {
-  const barTrack = bar.querySelector('.bar-track');
-  if (!barTrack) return;
-  clearSegments(barTrack);
-
-  const barStartMinutes = Number(bar.dataset.startHour) * 60;
-  const barEndMinutes = barStartMinutes + BAR_TOTAL_MINUTES;
-  const pastWidth = Math.max(0, Math.min(nowMinutes, barEndMinutes) - barStartMinutes);
-  if (pastWidth > 0) {
-    addSegment(barTrack, 0, (pastWidth / BAR_TOTAL_MINUTES) * 100, 'past');
-  }
-
-  const schedule = getSchedule(seatId);
-  if (!schedule) return;
-
-  schedule.intervals.forEach((interval) => {
-    const start = Math.max(interval.start, barStartMinutes, nowMinutes);
-    const end = Math.min(interval.end, barEndMinutes);
-    if (start >= end) return;
-
-    const leftPercent = ((start - barStartMinutes) / BAR_TOTAL_MINUTES) * 100;
-    const widthPercent = ((end - start) / BAR_TOTAL_MINUTES) * 100;
-    addSegment(barTrack, leftPercent, widthPercent, getEffectiveState(interval, nowMinutes));
-  });
-}
-
-function updateTimelines(nowMinutes) {
-  for (let seatId = 1; seatId <= 17; seatId += 1) {
-    const timeline = document.getElementById(`timeline${seatId}`);
-    if (!timeline) continue;
-    timeline.querySelectorAll('.bar').forEach((bar) => {
-      updateTimelineBar(seatId, bar, nowMinutes);
-    });
-  }
-}
-
 // その席が次に空く時刻（分）を返す。今日はもう空かないなら null
 function getNextFreeMinutes(seat, nowMinutes) {
   let time = nowMinutes;
@@ -200,6 +146,67 @@ function getNextFreeMinutes(seat, nowMinutes) {
     covering = seat.intervals.find((interval) => interval.start <= time && time < interval.end);
   }
   return time < CLOSE_MINUTES ? time : null;
+}
+
+function intervalsOverlap(seat, start, end, ignoredInterval = null) {
+  return seat.intervals.some((interval) => (
+    interval !== ignoredInterval
+    && start < interval.end
+    && end > interval.start
+  ));
+}
+
+// ===== 画面の更新 =====
+function updateClock(nowMinutes) {
+  const timeEl = document.getElementById('time');
+  if (timeEl) timeEl.textContent = formatMinutes(nowMinutes);
+}
+
+function updateSeatStates(nowMinutes) {
+  seatSchedules.forEach((seat) => {
+    const seatEl = document.getElementById(`seat${seat.id}`);
+    if (!seatEl) return;
+
+    seatEl.classList.remove('free', 'reserved', 'in-use');
+    seatEl.classList.add(getActiveInterval(seat, nowMinutes) ? 'in-use' : 'free');
+  });
+}
+
+function addSegment(barTrack, start, end, barStartMinutes, className) {
+  const segment = document.createElement('div');
+  segment.className = `segment ${className}`;
+  segment.style.left = `${((start - barStartMinutes) / BAR_TOTAL_MINUTES) * 100}%`;
+  segment.style.width = `${((end - start) / BAR_TOTAL_MINUTES) * 100}%`;
+  barTrack.appendChild(segment);
+}
+
+// バー1本に、過ぎた時間（灰色）と、これからの予約・利用を描く
+function updateTimelineBar(seat, bar, nowMinutes) {
+  const barTrack = bar.querySelector('.bar-track');
+  if (!barTrack) return;
+  barTrack.querySelectorAll('.segment').forEach((segment) => segment.remove());
+
+  const barStartMinutes = Number(bar.dataset.startHour) * 60;
+  const barEndMinutes = barStartMinutes + BAR_TOTAL_MINUTES;
+  const pastEnd = Math.min(nowMinutes, barEndMinutes);
+  if (pastEnd > barStartMinutes) {
+    addSegment(barTrack, barStartMinutes, pastEnd, barStartMinutes, 'past');
+  }
+
+  seat.intervals.forEach((interval) => {
+    const start = Math.max(interval.start, barStartMinutes, nowMinutes);
+    const end = Math.min(interval.end, barEndMinutes);
+    if (start >= end) return;
+    addSegment(barTrack, start, end, barStartMinutes, getEffectiveState(interval, nowMinutes));
+  });
+}
+
+function updateTimelines(nowMinutes) {
+  seatSchedules.forEach((seat) => {
+    const timeline = document.getElementById(`timeline${seat.id}`);
+    if (!timeline) return;
+    timeline.querySelectorAll('.bar').forEach((bar) => updateTimelineBar(seat, bar, nowMinutes));
+  });
 }
 
 // 要約の1行を「前の文字・強調する文字・後ろの文字」で書き込む（強調は数字や時刻に使う）
@@ -215,6 +222,7 @@ function setSummaryLine(el, before, emphasis = '', after = '') {
   if (after) el.append(after);
 }
 
+// 要約（スマホのみ表示）：上の行に状態、下の行に残席数や空く時刻
 function updateSummary(nowMinutes) {
   const summaryEl = document.getElementById('summary');
   const statusEl = document.getElementById('summary-status');
@@ -257,15 +265,15 @@ function updateSummary(nowMinutes) {
 }
 
 function updateEverything() {
-  const now = getNowInJapan();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  setCurrentTime(now);
+  const nowMinutes = getCurrentMinutes();
+  updateClock(nowMinutes);
   updateSummary(nowMinutes);
   updateSeatStates(nowMinutes);
   updateTimelines(nowMinutes);
   updateQuickActions(nowMinutes);
 }
 
+// ===== ポップアップ（PC のみ） =====
 function showMessage(message) {
   const messageEl = document.getElementById('popup-message');
   if (messageEl) messageEl.textContent = message;
@@ -284,6 +292,14 @@ function showCompletion(message) {
   }, 3000);
 }
 
+// 1. クイックアクション と 2. 予約登録 のどちらかを出す
+function showPanel(panel) {
+  document.getElementById('quick-panel').hidden = panel !== 'quick';
+  document.getElementById('reserve-panel').hidden = panel !== 'reserve';
+  showMessage('');
+}
+
+// 空席なら「今すぐ利用」、利用中なら「返却」「延長」を出す
 function updateQuickActions(nowMinutes = getCurrentMinutes()) {
   const schedule = getSchedule(selectedSeatId);
   if (!schedule) return;
@@ -293,35 +309,41 @@ function updateQuickActions(nowMinutes = getCurrentMinutes()) {
   document.getElementById('extend-button').hidden = !isInUse;
 }
 
-function getCurrentMinutes() {
-  const now = getNowInJapan();
-  return now.getHours() * 60 + now.getMinutes();
-}
-
-function intervalsOverlap(seat, start, end, ignoredInterval = null) {
-  return seat.intervals.some((interval) => (
-    interval !== ignoredInterval
-    && start < interval.end
-    && end > interval.start
-  ));
-}
-
-function capAtClosing(end, action) {
-  if (end <= CLOSE_MINUTES) return end;
-  if (!window.confirm(`${action}時間が閉館時刻（21:00）を超えます。21:00まで${action}しますか？`)) {
-    return null;
-  }
-  return CLOSE_MINUTES;
-}
-
 function openPopup(seatId) {
   selectedSeatId = seatId;
   document.getElementById('popup-seat-number').textContent = String(seatId);
-  document.getElementById('quick-panel').hidden = false;
-  document.getElementById('reserve-panel').hidden = true;
   document.getElementById('popup').hidden = false;
-  showMessage('');
+  showPanel('quick');
   updateQuickActions();
+}
+
+function openReservePanel() {
+  showPanel('reserve');
+  renderReservations();
+}
+
+function backToQuickPanel() {
+  showPanel('quick');
+  updateQuickActions();
+}
+
+// 登録の後始末：保存して画面を描き直し、保存できたら完了を知らせる
+function finishChange(completionMessage) {
+  const saved = saveSeatSchedules();
+  updateEverything();
+  if (!saved) return;
+  showMessage('');
+  showCompletion(completionMessage);
+}
+
+// 終了時刻が閉館を超えるときは、閉館までにしてよいか確かめる。やめたら null
+function capAtClosing(end, action) {
+  if (end <= CLOSE_MINUTES) return end;
+  const closeText = formatMinutes(CLOSE_MINUTES);
+  if (!window.confirm(`${action}時間が閉館時刻（${closeText}）を超えます。${closeText}まで${action}しますか？`)) {
+    return null;
+  }
+  return CLOSE_MINUTES;
 }
 
 function renderReservations() {
@@ -332,10 +354,9 @@ function renderReservations() {
   list.replaceChildren();
   const nowMinutes = getCurrentMinutes();
   schedule.intervals
-    .map((interval, index) => ({ interval, index }))
-    .filter(({ interval }) => interval.state === 'reserved' && interval.start > nowMinutes)
-    .sort((a, b) => a.interval.start - b.interval.start)
-    .forEach(({ interval, index }) => {
+    .filter((interval) => interval.state === 'reserved' && interval.start > nowMinutes)
+    .sort((a, b) => a.start - b.start)
+    .forEach((interval) => {
       const item = document.createElement('li');
       item.className = 'reservation-item';
 
@@ -346,25 +367,18 @@ function renderReservations() {
       const cancelButton = document.createElement('button');
       cancelButton.type = 'button';
       cancelButton.className = 'cancel-button';
-      cancelButton.dataset.index = String(index);
       cancelButton.textContent = 'キャンセル';
-      cancelButton.addEventListener('click', () => {
-        schedule.intervals.splice(index, 1);
-        const saved = saveSeatSchedules();
-        updateEverything();
-        renderReservations();
-        if (saved) showCompletion('予約をキャンセルしました。');
-      });
+      cancelButton.addEventListener('click', () => cancelReservation(schedule, interval));
 
       item.append(time, cancelButton);
       list.appendChild(item);
     });
 }
 
-function formatMinutes(minutes) {
-  const hour = String(Math.floor(minutes / 60)).padStart(2, '0');
-  const minute = String(minutes % 60).padStart(2, '0');
-  return `${hour}:${minute}`;
+function cancelReservation(schedule, interval) {
+  schedule.intervals.splice(schedule.intervals.indexOf(interval), 1);
+  finishChange('予約をキャンセルしました。');
+  renderReservations();
 }
 
 function registerUseNow() {
@@ -373,10 +387,10 @@ function registerUseNow() {
 
   const start = getCurrentMinutes();
   if (start < OPEN_MINUTES || start >= CLOSE_MINUTES) {
-    showMessage('開館時間（09:00〜21:00）の間に利用を開始してください。');
+    showMessage(`開館時間（${formatMinutes(OPEN_MINUTES)}〜${formatMinutes(CLOSE_MINUTES)}）の間に利用を開始してください。`);
     return;
   }
-  const end = capAtClosing(start + 120, '利用');
+  const end = capAtClosing(start + USE_MINUTES, '利用');
   if (end === null) return;
   if (intervalsOverlap(schedule, start, end)) {
     showMessage('利用時間に予約または利用予定が重なっています。');
@@ -384,12 +398,7 @@ function registerUseNow() {
   }
 
   schedule.intervals.push({ state: 'in-use', start, end });
-  const saved = saveSeatSchedules();
-  updateEverything();
-  if (saved) {
-    showMessage('');
-    showCompletion('利用を開始しました。');
-  }
+  finishChange('利用を開始しました。');
 }
 
 function returnSeat() {
@@ -399,27 +408,22 @@ function returnSeat() {
   const activeInterval = getActiveInterval(schedule, nowMinutes);
   if (!activeInterval) return;
 
+  // 始まったばかりなら記録ごと消し、そうでなければ今の時刻で終わらせる
   if (nowMinutes <= activeInterval.start) {
     schedule.intervals.splice(schedule.intervals.indexOf(activeInterval), 1);
   } else {
     activeInterval.end = nowMinutes;
   }
-  const saved = saveSeatSchedules();
-  updateEverything();
-  if (saved) {
-    showMessage('');
-    showCompletion('返却しました。');
-  }
+  finishChange('返却しました。');
 }
 
 function extendUse() {
   const schedule = getSchedule(selectedSeatId);
   if (!schedule) return;
-  const nowMinutes = getCurrentMinutes();
-  const activeInterval = getActiveInterval(schedule, nowMinutes);
+  const activeInterval = getActiveInterval(schedule, getCurrentMinutes());
   if (!activeInterval) return;
 
-  const end = capAtClosing(activeInterval.end + 120, '延長');
+  const end = capAtClosing(activeInterval.end + USE_MINUTES, '延長');
   if (end === null) return;
   if (end <= activeInterval.end) {
     showMessage('閉館時刻を超えて延長することはできません。');
@@ -431,17 +435,7 @@ function extendUse() {
   }
 
   activeInterval.end = end;
-  const saved = saveSeatSchedules();
-  updateEverything();
-  if (saved) {
-    showMessage('');
-    showCompletion('利用時間を延長しました。');
-  }
-}
-
-function parseTime(value) {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
-  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  finishChange('利用時間を延長しました。');
 }
 
 function registerReservation(event) {
@@ -450,13 +444,12 @@ function registerReservation(event) {
   if (!schedule) return;
 
   const start = parseTime(document.getElementById('reserve-start').value);
-  const nowMinutes = getCurrentMinutes();
-  if (start === null || start < OPEN_MINUTES || start >= CLOSE_MINUTES || start <= nowMinutes) {
-    showMessage('予約開始時刻は、現在時刻より後の09:00〜21:00に設定してください。');
+  if (start === null || start < OPEN_MINUTES || start >= CLOSE_MINUTES || start <= getCurrentMinutes()) {
+    showMessage(`予約開始時刻は、現在時刻より後の${formatMinutes(OPEN_MINUTES)}〜${formatMinutes(CLOSE_MINUTES)}に設定してください。`);
     return;
   }
 
-  const end = capAtClosing(start + 120, '予約');
+  const end = capAtClosing(start + USE_MINUTES, '予約');
   if (end === null) return;
   if (intervalsOverlap(schedule, start, end)) {
     showMessage('予約時間に他の予約または利用予定が重なっています。');
@@ -464,23 +457,18 @@ function registerReservation(event) {
   }
 
   schedule.intervals.push({ state: 'reserved', start, end });
-  const saved = saveSeatSchedules();
-  updateEverything();
+  finishChange('予約を登録しました。');
   renderReservations();
-  if (saved) {
-    showMessage('');
-    showCompletion('予約を登録しました。');
-  }
 }
 
 function setupPopup() {
   // スマホは表示のみなので、座席を押しても何も開かない
   if (isMobile) return;
 
-  for (let seatId = 1; seatId <= 17; seatId += 1) {
-    const seatEl = document.getElementById(`seat${seatId}`);
-    if (seatEl) seatEl.addEventListener('click', () => openPopup(seatId));
-  }
+  seatSchedules.forEach((seat) => {
+    const seatEl = document.getElementById(`seat${seat.id}`);
+    if (seatEl) seatEl.addEventListener('click', () => openPopup(seat.id));
+  });
 
   document.getElementById('popup-close').addEventListener('click', () => {
     document.getElementById('popup').hidden = true;
@@ -488,18 +476,8 @@ function setupPopup() {
   document.getElementById('use-now-button').addEventListener('click', registerUseNow);
   document.getElementById('return-button').addEventListener('click', returnSeat);
   document.getElementById('extend-button').addEventListener('click', extendUse);
-  document.getElementById('reserve-button').addEventListener('click', () => {
-    document.getElementById('quick-panel').hidden = true;
-    document.getElementById('reserve-panel').hidden = false;
-    showMessage('');
-    renderReservations();
-  });
-  document.getElementById('back-button').addEventListener('click', () => {
-    document.getElementById('quick-panel').hidden = false;
-    document.getElementById('reserve-panel').hidden = true;
-    showMessage('');
-    updateQuickActions();
-  });
+  document.getElementById('reserve-button').addEventListener('click', openReservePanel);
+  document.getElementById('back-button').addEventListener('click', backToQuickPanel);
   document.getElementById('reserve-form').addEventListener('submit', registerReservation);
 }
 
@@ -512,6 +490,7 @@ function fillAllSeatsForCheck() {
   });
 }
 
+// ===== 起動 =====
 setupPopup();
 if (checkMode === 'full') fillAllSeatsForCheck();
 updateEverything();
