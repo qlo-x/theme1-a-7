@@ -11,6 +11,7 @@
 	--past: #d6d9d4;
 	--line: #c8cec5;
 	--ink: #303a31;
+	--shine: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.03));
 }
 
 * {
@@ -87,7 +88,6 @@ h1 {
 }
 
 #time {
-	justify-self: end;
 	color: #38483b;
 	font-size: clamp(15px, 4vw, 20px);
 	font-variant-numeric: tabular-nums;
@@ -138,8 +138,6 @@ h1 {
 	row-gap: 4px;
 	grid-column: 2;
 	grid-row: 1;
-	width: auto;
-	flex: initial;
 	min-height: 0;
 }
 
@@ -213,10 +211,6 @@ h1 {
 	background: rgba(255, 255, 255, 0.06);
 }
 
-.seat::after {
-	opacity: 1;
-}
-
 .seat:hover,
 .seat:focus-visible {
 	border-color: rgba(24, 37, 25, 0.75);
@@ -284,30 +278,17 @@ h1 {
 	transform: translateX(-50%) translateY(2px);
 }
 
+/* 空き・予約・使用中の色（座席と凡例で共通） */
 .free {
-	background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(0,0,0,0.03)), var(--free);
+	background: var(--shine), var(--free);
 }
 
 .reserved {
-	background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(0,0,0,0.03)), var(--reserved);
+	background: var(--shine), var(--reserved);
 }
 
 .in-use {
-	background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(0,0,0,0.03)), var(--in-use);
-}
-
-.legend-box.free,
-.legend-box.reserved,
-.legend-box.in-use {
-	background-color: var(--free);
-}
-
-.legend-box.reserved {
-	background-color: var(--reserved);
-}
-
-.legend-box.in-use {
-	background-color: var(--in-use);
+	background: var(--shine), var(--in-use);
 }
 
 #timeline-area {
@@ -449,7 +430,7 @@ h1 {
 	}
 }
 
-/* ===== 登録用ポップアップ（スマホ・PC 共通） ===== */
+/* ===== 登録用ポップアップ（PC のみ。表示・非表示は JS が hidden で切り替える） ===== */
 .popup {
 	position: fixed;
 	z-index: 10;
@@ -525,8 +506,7 @@ h1 {
 	cursor: pointer;
 }
 
-.use-now,
-.cancel-button {
+.use-now {
 	background: #f2cbc7;
 }
 
@@ -541,21 +521,6 @@ h1 {
 
 .reserve {
 	background: #f5e9b9;
-}
-
-#popup:has(#reserve-button:focus) #quick-panel {
-	display: none;
-}
-
-#popup:has(#reserve-button:focus) #reserve-panel {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	grid-template-areas:
-		"form"
-		"title"
-		"list"
-		"back";
-	gap: 14px;
 }
 
 #reserve-panel {
@@ -637,8 +602,7 @@ h1 {
 }
 
 @media (min-width: 560px) {
-	#reserve-panel,
-	#popup:has(#reserve-button:focus) #reserve-panel {
+	#reserve-panel {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 		grid-template-areas:
 			"form title"
@@ -770,7 +734,6 @@ h1 {
 
 	.seat {
 		font-size: 20px;
-		cursor: pointer;
 		transition: filter 120ms ease, transform 120ms ease;
 	}
 
