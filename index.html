@@ -3,18 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LC-SeatChecker</title>
+  <title>セキミエくん</title>
   <link rel="stylesheet" href="Style.css">
 </head>
 <body>
-  <!-- ===== ヘッダー：凡例 / タイトル / 現在時刻 ===== -->
+  <!-- ===== ヘッダー：凡例 / サービス名とタイトル / 現在時刻 ===== -->
   <header>
     <ul class="legend">
       <li><span class="legend-box free"></span>空き</li>
       <li><span class="legend-box reserved"></span>予約</li>
       <li><span class="legend-box in-use"></span>使用中</li>
     </ul>
-    <h1>利用状況</h1>
+    <div class="title">
+      <p class="app-name">セキミエくん</p>
+      <h1>利用状況</h1>
+    </div>
     <div class="clock">
       <span class="clock-label">現在時刻</span>
       <span id="time">--:--</span>
