@@ -77,6 +77,23 @@ header {
 	border-radius: 3px;
 }
 
+/* サービス名を小さく上に置き、その下に画面のタイトル */
+.title {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.app-name {
+	margin: 0;
+	color: #3f7a38;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	white-space: nowrap;
+}
+
 h1 {
 	margin: 0;
 	color: #26352a;
@@ -729,6 +746,10 @@ h1 {
 		width: 14px;
 		height: 14px;
 		flex-basis: 14px;
+	}
+
+	.app-name {
+		font-size: 15px;
 	}
 
 	h1 {
